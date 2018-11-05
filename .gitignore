@@ -1,0 +1,17 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+antipath
+
+# Test binary, build with `go test -c`
+*.test
+
+# Stuff used for testing, these will be generated on running tests
+*.db
+debug
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
