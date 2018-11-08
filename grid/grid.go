@@ -63,7 +63,7 @@ func (s *State) NewEntity(data entity.Entity, pos Coordinates) (id string, err e
 	return id, nil
 }
 
-func (s *State) Move(entityID string, dir Direction, speed int, instant bool) (err error) {
+func (s *State) Move(entityID string, dir Direction, speed int, altitude int) (err error) {
 	// Get the location of the entity
 	sourcePos, exists := s.entities[entityID]
 	if !exists {
@@ -75,40 +75,23 @@ func (s *State) Move(entityID string, dir Direction, speed int, instant bool) (e
 		return fmt.Errorf("couldn't get tile at provided pos, pos: %v, err: %s", sourcePos, err)
 	}
 
-	// Calculate the movement accounting for instant
+	// Calculate the total movement
 	var targetPos Coordinates
 	var targetTile *tile.Tile
-	for targetPos = sourcePos; speed > 0; speed -= 1 {
-		posDelta := 1
-		if instant {
-			posDelta = speed
-		}
-		switch dir {
-		case Up:
-			targetPos.Y += posDelta
-		case Down:
-			targetPos.Y -= posDelta
-		case Left:
-			targetPos.X -= posDelta
-		case Right:
-			targetPos.X += posDelta
-		}
-
-		// Get tile data for where we moved to
-		targetTile, err = s.GetTile(targetPos)
-		if err != nil {
-			return fmt.Errorf("couldn't move to resulting pos: %v, err: %s", targetPos, err)
-		}
-
-		// Make sure out target is free
-		if !targetTile.IsFree() {
-			return fmt.Errorf("couldn't move to resulting pos: %v, tile is occupied", targetPos)
-		}
-
-		if instant {
-			break
-		}
+	switch dir {
+	case Up:
+		targetPos.Y += speed
+	case Down:
+		targetPos.Y -= speed
+	case Left:
+		targetPos.X -= speed
+	case Right:
+		targetPos.X += speed
 	}
+
+	// Simulate entity movement with collision rules
+	resultPos := s.moveCollider(sourcePos, targetPos, altitude)
+	targetTile, _ = s.GetTile(resultPos)
 
 	// Move the entity
 	entityData := sourceTile.PopEntity()
@@ -116,6 +99,46 @@ func (s *State) Move(entityID string, dir Direction, speed int, instant bool) (e
 	s.entities[entityID] = targetPos
 
 	return nil
+}
+
+func (s *State) moveCollider(sourcePos Coordinates, targetPos Coordinates, altitude int) (result Coordinates) {
+	// Keep track of our movements
+	result = sourcePos
+	checkPos := sourcePos
+	// Loop counter is simply in case some bug causes an infinite loop
+	// If anything moves a distance greater than twice the total board size
+	// something is wrong
+	for distanceMoved := 0; distanceMoved < s.size*2; distanceMoved++ {
+		// move 1 towards out destination. If we're already at our destination
+		// just return that
+		switch {
+		case targetPos.X > checkPos.X:
+			result.X += 1
+		case targetPos.X < checkPos.X:
+			result.X -= 1
+		case targetPos.Y > checkPos.Y:
+			result.Y += 1
+		case targetPos.Y < checkPos.Y:
+		default: // Positions are the same
+			return targetPos
+		}
+
+		// Get tile data for where we moved to
+		checkTile, err := s.GetTile(checkPos)
+		if err != nil {
+			return result
+		}
+
+		// Make sure out target is free
+		if !checkTile.CheckCollision(altitude) {
+			return result
+		}
+
+		// Store that we successfully can move here
+		result = checkPos
+	}
+
+	panic("movement calculation out of bounds!")
 }
 
 func outOfBounds(size int, pos Coordinates) bool {

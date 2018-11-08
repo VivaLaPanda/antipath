@@ -12,17 +12,11 @@ type Tile struct {
 	//hazard *Hazard
 	totemHealth    int
 	alignmentDelta int
+	height         int
 }
 
-func (tile *Tile) IsFree() bool {
-	if tile.totemHealth > 0 {
-		return false
-	}
-	if tile.entity != nil {
-		return false
-	}
-
-	return true
+func (tile *Tile) CheckCollision(altitude int) bool {
+	return altitude > tile.height
 }
 
 func (tile *Tile) SetEntity(entity entity.Entity) error {
