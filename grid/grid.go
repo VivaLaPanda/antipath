@@ -28,6 +28,9 @@ const (
 )
 
 func NewState(size int) (grid *State) {
+	if size < 1 {
+		panic("state must be at least 1x1 size")
+	}
 	gridData := make([][]tile.Tile, size)
 	for idx := range gridData {
 		gridData[idx] = make([]tile.Tile, size)
@@ -63,6 +66,11 @@ func (s *State) NewEntity(data entity.Entity, pos Coordinates) (id string, err e
 	return id, nil
 }
 
+func (s *State) GetEntityPos(entityID string) (pos Coordinates, exists bool) {
+	pos, exists = s.entities[entityID]
+	return
+}
+
 func (s *State) Move(entityID string, dir Direction, speed int, altitude int) (err error) {
 	// Get the location of the entity
 	sourcePos, exists := s.entities[entityID]
@@ -76,13 +84,13 @@ func (s *State) Move(entityID string, dir Direction, speed int, altitude int) (e
 	}
 
 	// Calculate the total movement
-	var targetPos Coordinates
+	targetPos := sourcePos
 	var targetTile *tile.Tile
 	switch dir {
 	case Up:
-		targetPos.Y += speed
-	case Down:
 		targetPos.Y -= speed
+	case Down:
+		targetPos.Y += speed
 	case Left:
 		targetPos.X -= speed
 	case Right:
@@ -96,7 +104,7 @@ func (s *State) Move(entityID string, dir Direction, speed int, altitude int) (e
 	// Move the entity
 	entityData := sourceTile.PopEntity()
 	targetTile.SetEntity(entityData)
-	s.entities[entityID] = targetPos
+	s.entities[entityID] = resultPos
 
 	return nil
 }
@@ -113,12 +121,13 @@ func (s *State) moveCollider(sourcePos Coordinates, targetPos Coordinates, altit
 		// just return that
 		switch {
 		case targetPos.X > checkPos.X:
-			result.X += 1
+			checkPos.X += 1
 		case targetPos.X < checkPos.X:
-			result.X -= 1
+			checkPos.X -= 1
 		case targetPos.Y > checkPos.Y:
-			result.Y += 1
+			checkPos.Y += 1
 		case targetPos.Y < checkPos.Y:
+			checkPos.Y -= 1
 		default: // Positions are the same
 			return targetPos
 		}
@@ -130,7 +139,7 @@ func (s *State) moveCollider(sourcePos Coordinates, targetPos Coordinates, altit
 		}
 
 		// Make sure out target is free
-		if !checkTile.CheckCollision(altitude) {
+		if checkTile.WillCollide(altitude) {
 			return result
 		}
 
@@ -142,5 +151,5 @@ func (s *State) moveCollider(sourcePos Coordinates, targetPos Coordinates, altit
 }
 
 func outOfBounds(size int, pos Coordinates) bool {
-	return pos.X > size || pos.Y > size
+	return pos.X > size || pos.Y > size || pos.X < 0 || pos.Y < 0
 }
