@@ -25,6 +25,7 @@ const (
 	Right Direction = iota
 	Left  Direction = iota
 	Down  Direction = iota
+	None  Direction = iota
 )
 
 func NewState(size int) (grid *State) {
@@ -40,6 +41,10 @@ func NewState(size int) (grid *State) {
 		size:     size, // faster than using len every time
 		entities: make(map[string]Coordinates),
 	}
+}
+
+func (s *State) Size() int {
+	return s.size
 }
 
 func (s *State) GetTile(pos Coordinates) (*tile.Tile, error) {
