@@ -1,15 +1,15 @@
 package action
 
-import "github.com/VivaLaPanda/antipath/grid"
+import "github.com/VivaLaPanda/antipath/state"
 
 type Set struct {
-	Movement grid.Direction
+	Movement state.Direction
 	Jump     bool
 }
 
 func DefaultSet() Set {
 	return Set{
-		Movement: grid.None,
+		Movement: state.None,
 		Jump:     false,
 	}
 }

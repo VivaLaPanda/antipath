@@ -5,21 +5,25 @@ import (
 
 	"github.com/VivaLaPanda/antipath/engine/action"
 	"github.com/VivaLaPanda/antipath/entity/player"
-	"github.com/VivaLaPanda/antipath/grid"
+	"github.com/VivaLaPanda/antipath/state"
+	"github.com/VivaLaPanda/antipath/state/tile"
 )
 
 type Engine struct {
-	players          map[string]*player.Player
-	playerActions    map[string]action.Set
-	actionsToProcess map[string]action.Set
-	gameState        *grid.State
+	players          map[state.EntityID]*player.Player
+	ClientSubs       map[chan [][]tile.Tile]bool
+	playerActions    map[state.EntityID]action.Set
+	actionsToProcess map[state.EntityID]action.Set
+	gameState        *state.State
 }
 
 func NewEngine() *Engine {
 	engine := &Engine{
-		playerActions:    make(map[string]action.Set),
-		actionsToProcess: make(map[string]action.Set),
-		gameState:        grid.NewState(100),
+		players:          make(map[state.EntityID]*player.Player),
+		ClientSubs:       make(map[chan [][]tile.Tile]bool),
+		playerActions:    make(map[state.EntityID]action.Set),
+		actionsToProcess: make(map[state.EntityID]action.Set),
+		gameState:        state.NewState(100),
 	}
 
 	go engine.processEvents()
@@ -27,27 +31,27 @@ func NewEngine() *Engine {
 	return engine
 }
 
-func (e *Engine) AddPlayer() (playerID string) {
+func (e *Engine) AddPlayer() (entityID state.EntityID) {
 	newPlayer := player.NewPlayer()
 	// Keep trying to spawn in the player at new coords until it works
 	var err error
 	for err != nil {
-		pos := grid.Coordinates{
+		pos := state.Coordinates{
 			X: rand.Intn(e.gameState.Size()),
 			Y: rand.Intn(e.gameState.Size()),
 		}
-		playerID, err = e.gameState.NewEntity(newPlayer, pos)
+		entityID, err = e.gameState.NewEntity(newPlayer, pos)
 	}
 
-	e.players[playerID] = newPlayer
+	e.players[entityID] = newPlayer
 	// Set the default action
-	e.playerActions[playerID] = action.DefaultSet()
+	e.playerActions[entityID] = action.DefaultSet()
 
-	return playerID
+	return entityID
 }
 
-func (e *Engine) SetAction(playerID string, actionSet action.Set) {
-	e.playerActions[playerID] = actionSet
+func (e *Engine) SetAction(entityID state.EntityID, actionSet action.Set) {
+	e.playerActions[entityID] = actionSet
 }
 
 func (e *Engine) processEvents() {
@@ -63,8 +67,8 @@ func (e *Engine) processPlayerActions() {
 	for k, v := range e.playerActions {
 		e.actionsToProcess[k] = v
 	}
-	for playerID, action := range e.playerActions {
-		playerData := e.players[playerID]
+	for entityID, action := range e.playerActions {
+		playerData := e.players[entityID]
 
 		// Process jumps
 		if action.Jump {
@@ -72,7 +76,7 @@ func (e *Engine) processPlayerActions() {
 		}
 
 		// Process movement
-		err := e.gameState.Move(playerID, action.Movement, playerData.Speed(), playerData.Altitude)
+		err := e.gameState.Move(entityID, action.Movement, playerData.Speed(), playerData.Altitude)
 
 		// Right now any error is a panic. Once we get to this part of the code actions
 		if err != nil {

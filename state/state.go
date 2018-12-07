@@ -1,17 +1,17 @@
-package grid
+package state
 
 import (
 	"fmt"
 
 	"github.com/VivaLaPanda/antipath/entity"
-	"github.com/VivaLaPanda/antipath/grid/tile"
+	"github.com/VivaLaPanda/antipath/state/tile"
 	uuid "github.com/satori/go.uuid"
 )
 
 type State struct {
 	grid     [][]tile.Tile
 	size     int
-	entities map[string]Coordinates
+	entities map[EntityID]Coordinates
 }
 
 type Coordinates struct {
@@ -19,6 +19,7 @@ type Coordinates struct {
 }
 
 type Direction int
+type EntityID string
 
 const (
 	Up    Direction = iota
@@ -39,7 +40,7 @@ func NewState(size int) (grid *State) {
 	return &State{
 		grid:     gridData,
 		size:     size, // faster than using len every time
-		entities: make(map[string]Coordinates),
+		entities: make(map[EntityID]Coordinates),
 	}
 }
 
@@ -51,10 +52,10 @@ func (s *State) GetTile(pos Coordinates) (*tile.Tile, error) {
 	if outOfBounds(s.size, pos) {
 		return nil, fmt.Errorf("provided pos is out of bounds. Pos: %v, maxsize: %d", pos, s.size)
 	}
-	return &s.grid[pos.X][pos.Y], nil
+	return &s.grid[pos.Y][pos.X], nil
 }
 
-func (s *State) NewEntity(data entity.Entity, pos Coordinates) (id string, err error) {
+func (s *State) NewEntity(data entity.Entity, pos Coordinates) (id EntityID, err error) {
 	targetTile, err := s.GetTile(pos)
 	if err != nil {
 		return "", err
@@ -64,19 +65,38 @@ func (s *State) NewEntity(data entity.Entity, pos Coordinates) (id string, err e
 		return "", fmt.Errorf("provided pos can't contain an entity, already full. Tile %v", targetTile)
 	}
 
-	id = uuid.Must(uuid.NewV4()).String()
+	id = EntityID(uuid.Must(uuid.NewV4()).String())
 
 	s.entities[id] = pos
 
 	return id, nil
 }
 
-func (s *State) GetEntityPos(entityID string) (pos Coordinates, exists bool) {
+func (s *State) GetEntityPos(entityID EntityID) (pos Coordinates, exists bool) {
 	pos, exists = s.entities[entityID]
 	return
 }
 
-func (s *State) Move(entityID string, dir Direction, speed int, altitude int) (err error) {
+func (s *State) PeekState(entityID EntityID) [][]tile.Tile {
+	windowSize := 10
+	// Expand a window around the entity
+	pos := s.entities[entityID]
+	minX := forceBounds(pos.X-windowSize, s.size)
+	minY := forceBounds(pos.Y-windowSize, s.size)
+	maxX := forceBounds(pos.X+windowSize, s.size)
+	maxY := forceBounds(pos.Y+windowSize, s.size)
+
+	// Grab the part of the grid described by the bounds above
+	ySlice := s.grid[minY:maxY]
+	gridCopy := make([][]tile.Tile, len(ySlice))
+	for idx, row := range ySlice {
+		gridCopy[idx] = row[minX:maxX]
+	}
+
+	return gridCopy
+}
+
+func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) (err error) {
 	// Get the location of the entity
 	sourcePos, exists := s.entities[entityID]
 	if !exists {
@@ -156,5 +176,16 @@ func (s *State) moveCollider(sourcePos Coordinates, targetPos Coordinates, altit
 }
 
 func outOfBounds(size int, pos Coordinates) bool {
-	return pos.X > size || pos.Y > size || pos.X < 0 || pos.Y < 0
+	return pos.X > size-1 || pos.Y > size-1 || pos.X < 0 || pos.Y < 0
+}
+
+func forceBounds(dim int, max int) int {
+	if dim < 0 {
+		return 0
+	}
+	if dim > max {
+		return max
+	}
+
+	return dim
 }
