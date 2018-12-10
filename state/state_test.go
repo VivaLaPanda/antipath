@@ -68,7 +68,7 @@ func TestMove(t *testing.T) {
 	playerID, err := testState.NewEntity(testPlayer, pos)
 
 	// Check a small move
-	err = testState.Move(playerID, Up, testPlayer.Speed(), testPlayer.Altitude)
+	err = testState.Move(playerID, MovUp, testPlayer.Speed(), testPlayer.Altitude)
 	if err != nil {
 		t.Errorf("Moving the player to an empty space resulted in an error")
 	}
@@ -80,7 +80,7 @@ func TestMove(t *testing.T) {
 	}
 
 	// Try and hit the top wall
-	err = testState.Move(playerID, Up, 100, testPlayer.Altitude)
+	err = testState.Move(playerID, MovUp, 100, testPlayer.Altitude)
 	if err != nil {
 		t.Errorf("Moving the player resulted in an error")
 	}
@@ -95,7 +95,7 @@ func TestMove(t *testing.T) {
 	otherPlayer := player.NewPlayer()
 	testState.NewEntity(otherPlayer, pos)
 
-	err = testState.Move(playerID, Right, 10, testPlayer.Altitude)
+	err = testState.Move(playerID, MovRight, 10, testPlayer.Altitude)
 	if err != nil {
 		t.Errorf("Moving the player resulted in an error")
 	}

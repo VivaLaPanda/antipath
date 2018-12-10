@@ -9,7 +9,7 @@ type Set struct {
 
 func DefaultSet() Set {
 	return Set{
-		Movement: state.None,
+		Movement: state.MovNone,
 		Jump:     false,
 	}
 }

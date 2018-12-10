@@ -98,8 +98,7 @@ func (c *Client) readPump() {
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
-		delete(c.engine.ClientSubs, c.stateReciever)
-		close(c.stateReciever)
+		c.engine.UnregisterClient(c.playerID)
 		ticker.Stop()
 		c.conn.Close()
 	}()
@@ -123,6 +122,7 @@ func (c *Client) writePump() {
 				return
 			}
 
+			// Need to implement actual JSON encoding logic
 			w.Write(stateString)
 
 			if err := w.Close(); err != nil {
@@ -138,7 +138,13 @@ func (c *Client) writePump() {
 }
 
 // serveWs handles websocket requests from the peer.
-func serveWs(e *engine.Engine, w http.ResponseWriter, r *http.Request) {
+func ServeWs(e *engine.Engine, w http.ResponseWriter, r *http.Request) {
+	log.Println("Client attempting to connect...")
+	// No same origin policy
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -147,10 +153,11 @@ func serveWs(e *engine.Engine, w http.ResponseWriter, r *http.Request) {
 	// Make the client
 	client := NewClient(conn, e)
 	// Register it with the engine
-	e.ClientSubs[client.stateReciever] = true
+	client.engine.RegisterClient(client.playerID, client.stateReciever)
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
+	log.Printf("Client connected and in game. ID: %v", client.playerID)
 }

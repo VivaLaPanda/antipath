@@ -31,6 +31,10 @@ func (tile *Tile) PopEntity() entity.Entity {
 	return ref
 }
 
+func (tile *Tile) PeekEntity() entity.Entity {
+	return tile.entity
+}
+
 func (tile *Tile) Height() int {
 	if tile.entity != nil {
 		return tile.height + tile.entity.Height()

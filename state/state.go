@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/VivaLaPanda/antipath/entity"
 	"github.com/VivaLaPanda/antipath/state/tile"
@@ -9,9 +10,10 @@ import (
 )
 
 type State struct {
-	grid     [][]tile.Tile
-	size     int
-	entities map[EntityID]Coordinates
+	grid         [][]tile.Tile
+	size         int
+	entities     map[EntityID]Coordinates
+	entitiesLock *sync.RWMutex
 }
 
 type Coordinates struct {
@@ -22,11 +24,11 @@ type Direction int
 type EntityID string
 
 const (
-	Up    Direction = iota
-	Right Direction = iota
-	Left  Direction = iota
-	Down  Direction = iota
-	None  Direction = iota
+	MovUp    Direction = iota
+	MovRight Direction = iota
+	MovLeft  Direction = iota
+	MovDown  Direction = iota
+	MovNone  Direction = iota
 )
 
 func NewState(size int) (grid *State) {
@@ -38,9 +40,10 @@ func NewState(size int) (grid *State) {
 		gridData[idx] = make([]tile.Tile, size)
 	}
 	return &State{
-		grid:     gridData,
-		size:     size, // faster than using len every time
-		entities: make(map[EntityID]Coordinates),
+		grid:         gridData,
+		size:         size, // faster than using len every time
+		entities:     make(map[EntityID]Coordinates),
+		entitiesLock: &sync.RWMutex{},
 	}
 }
 
@@ -67,20 +70,26 @@ func (s *State) NewEntity(data entity.Entity, pos Coordinates) (id EntityID, err
 
 	id = EntityID(uuid.Must(uuid.NewV4()).String())
 
+	s.entitiesLock.Lock()
 	s.entities[id] = pos
+	s.entitiesLock.Unlock()
 
 	return id, nil
 }
 
 func (s *State) GetEntityPos(entityID EntityID) (pos Coordinates, exists bool) {
+	s.entitiesLock.RLock()
 	pos, exists = s.entities[entityID]
+	s.entitiesLock.RUnlock()
 	return
 }
 
 func (s *State) PeekState(entityID EntityID) [][]tile.Tile {
 	windowSize := 10
 	// Expand a window around the entity
+	s.entitiesLock.RLock()
 	pos := s.entities[entityID]
+	s.entitiesLock.RUnlock()
 	minX := forceBounds(pos.X-windowSize, s.size)
 	minY := forceBounds(pos.Y-windowSize, s.size)
 	maxX := forceBounds(pos.X+windowSize, s.size)
@@ -98,7 +107,9 @@ func (s *State) PeekState(entityID EntityID) [][]tile.Tile {
 
 func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) (err error) {
 	// Get the location of the entity
+	s.entitiesLock.RLock()
 	sourcePos, exists := s.entities[entityID]
+	s.entitiesLock.RUnlock()
 	if !exists {
 		return fmt.Errorf("provided entity ID not valid. ID: %s", entityID)
 	}
@@ -112,13 +123,13 @@ func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) 
 	targetPos := sourcePos
 	var targetTile *tile.Tile
 	switch dir {
-	case Up:
+	case MovUp:
 		targetPos.Y -= speed
-	case Down:
+	case MovDown:
 		targetPos.Y += speed
-	case Left:
+	case MovLeft:
 		targetPos.X -= speed
-	case Right:
+	case MovRight:
 		targetPos.X += speed
 	}
 
@@ -127,9 +138,11 @@ func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) 
 	targetTile, _ = s.GetTile(resultPos)
 
 	// Move the entity
+	s.entitiesLock.Lock()
 	entityData := sourceTile.PopEntity()
 	targetTile.SetEntity(entityData)
 	s.entities[entityID] = resultPos
+	s.entitiesLock.Unlock()
 
 	return nil
 }
