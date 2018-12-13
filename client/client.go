@@ -9,7 +9,6 @@ import (
 	"github.com/VivaLaPanda/antipath/engine"
 	"github.com/VivaLaPanda/antipath/engine/action"
 	"github.com/VivaLaPanda/antipath/state"
-	"github.com/VivaLaPanda/antipath/state/tile"
 	"github.com/gorilla/websocket"
 )
 
@@ -45,14 +44,14 @@ type Client struct {
 	playerID state.EntityID
 
 	// Buffered channel of outbound messages.
-	stateReciever chan [][]tile.Tile
+	stateReciever chan *state.State
 }
 
 func NewClient(conn *websocket.Conn, e *engine.Engine) *Client {
 	client := &Client{
 		conn:          conn,
 		engine:        e,
-		stateReciever: make(chan [][]tile.Tile),
+		stateReciever: make(chan *state.State),
 	}
 
 	client.playerID = e.AddPlayer()
@@ -82,16 +81,13 @@ func (c *Client) readPump() {
 		}
 
 		// Take the message, parse JSON, send as Action to engine
-		action := action.Set{}
+		action := &action.Set{}
 		err = json.Unmarshal(actionJSON, action)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
-			}
-			break
+			log.Printf("error parsing user command: %v", err)
 		}
 
-		c.engine.SetAction(c.playerID, action)
+		c.engine.SetAction(c.playerID, *action)
 	}
 }
 
@@ -102,6 +98,7 @@ func (c *Client) writePump() {
 		ticker.Stop()
 		c.conn.Close()
 	}()
+	// Loop reading current game state
 	for {
 		select {
 		case state, ok := <-c.stateReciever:

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -16,13 +17,18 @@ type State struct {
 	entitiesLock *sync.RWMutex
 }
 
+// A uuid that will always refer to an entity in the state
+type EntityID string
+
+// 2D coordinate pair. References a cell in `grid`
 type Coordinates struct {
 	X, Y int
 }
 
+// How we specify directions on the grid
 type Direction int
-type EntityID string
 
+// This const is like an enum. So MovUp is 0, MovRight is 1, etc.
 const (
 	MovUp    Direction = iota
 	MovRight Direction = iota
@@ -45,6 +51,21 @@ func NewState(size int) (grid *State) {
 		entities:     make(map[EntityID]Coordinates),
 		entitiesLock: &sync.RWMutex{},
 	}
+}
+
+func (state *State) MarshalJSON() ([]byte, error) {
+	if state.entitiesLock != nil {
+		state.entitiesLock.RLock()
+		defer state.entitiesLock.RUnlock()
+	}
+
+	return json.Marshal(&struct {
+		Grid     [][]tile.Tile            `json:"grid"`
+		Entities map[EntityID]Coordinates `json:"entities"`
+	}{
+		Grid:     state.grid,
+		Entities: state.entities,
+	})
 }
 
 func (s *State) Size() int {
@@ -84,16 +105,18 @@ func (s *State) GetEntityPos(entityID EntityID) (pos Coordinates, exists bool) {
 	return
 }
 
-func (s *State) PeekState(entityID EntityID) [][]tile.Tile {
-	windowSize := 10
+func (s *State) PeekState(entityID EntityID, windowSize int) *State {
+	stateFragment := &State{}
+	stateFragment.entities = make(map[EntityID]Coordinates)
+
 	// Expand a window around the entity
 	s.entitiesLock.RLock()
 	pos := s.entities[entityID]
 	s.entitiesLock.RUnlock()
-	minX := forceBounds(pos.X-windowSize, s.size)
-	minY := forceBounds(pos.Y-windowSize, s.size)
-	maxX := forceBounds(pos.X+windowSize, s.size)
-	maxY := forceBounds(pos.Y+windowSize, s.size)
+	minX := forceBounds(pos.X-(windowSize/2), s.size)
+	minY := forceBounds(pos.Y-(windowSize/2), s.size)
+	maxX := forceBounds(pos.X+(windowSize/2), s.size)
+	maxY := forceBounds(pos.Y+(windowSize/2), s.size)
 
 	// Grab the part of the grid described by the bounds above
 	ySlice := s.grid[minY:maxY]
@@ -102,7 +125,9 @@ func (s *State) PeekState(entityID EntityID) [][]tile.Tile {
 		gridCopy[idx] = row[minX:maxX]
 	}
 
-	return gridCopy
+	stateFragment.grid = gridCopy
+
+	return stateFragment
 }
 
 func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) (err error) {

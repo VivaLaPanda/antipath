@@ -8,26 +8,27 @@ import (
 	"github.com/VivaLaPanda/antipath/engine/action"
 	"github.com/VivaLaPanda/antipath/entity/player"
 	"github.com/VivaLaPanda/antipath/state"
-	"github.com/VivaLaPanda/antipath/state/tile"
 )
 
 type Engine struct {
 	players          map[state.EntityID]*player.Player
-	ClientSubs       map[state.EntityID]chan [][]tile.Tile
+	ClientSubs       map[state.EntityID]chan *state.State
 	clientSubsLock   *sync.RWMutex
 	playerActions    map[state.EntityID]action.Set
 	actionsToProcess map[state.EntityID]action.Set
 	gameState        *state.State
+	WindowSize       int
 }
 
-func NewEngine(stateSize int) *Engine {
+func NewEngine(stateSize int, WindowSize int) *Engine {
 	engine := &Engine{
 		players:          make(map[state.EntityID]*player.Player),
-		ClientSubs:       make(map[state.EntityID]chan [][]tile.Tile),
+		ClientSubs:       make(map[state.EntityID]chan *state.State),
 		clientSubsLock:   &sync.RWMutex{},
 		playerActions:    make(map[state.EntityID]action.Set),
 		actionsToProcess: make(map[state.EntityID]action.Set),
 		gameState:        state.NewState(stateSize),
+		WindowSize:       WindowSize,
 	}
 
 	go engine.processEvents()
@@ -59,7 +60,7 @@ func (e *Engine) AddPlayer() (entityID state.EntityID) {
 	return entityID
 }
 
-func (e *Engine) RegisterClient(entityID state.EntityID, stateReciever chan [][]tile.Tile) {
+func (e *Engine) RegisterClient(entityID state.EntityID, stateReciever chan *state.State) {
 	e.clientSubsLock.Lock()
 	defer e.clientSubsLock.Unlock()
 
@@ -118,7 +119,7 @@ func (e *Engine) updateClients() {
 	defer e.clientSubsLock.RUnlock()
 	for playerID, client := range e.ClientSubs {
 		select {
-		case client <- e.gameState.PeekState(playerID):
+		case client <- e.gameState.PeekState(playerID, e.WindowSize):
 		default:
 		}
 	}

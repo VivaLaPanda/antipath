@@ -1,5 +1,7 @@
 package player
 
+import "encoding/json"
+
 type Player struct {
 	Health     uint
 	alignment  int
@@ -17,6 +19,24 @@ func NewPlayer() *Player {
 		height:    5,
 		Altitude:  1,
 	}
+}
+
+func (p *Player) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Health     uint `json:"health"`
+		Alignment  int  `json:"alignment"`
+		Speed      int  `json:"speed"`
+		Height     int  `json:"height"`
+		JumpHeight int  `json:"jumpHeight"`
+		Altitude   int  `json:"altitude"`
+	}{
+		Health:     p.Health,
+		Alignment:  p.alignment,
+		Speed:      p.Speed(),
+		Height:     p.Height(),
+		JumpHeight: p.jumpHeight,
+		Altitude:   p.Altitude,
+	})
 }
 
 func (p *Player) Jump() {

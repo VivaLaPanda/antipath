@@ -1,6 +1,7 @@
 package tile
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/VivaLaPanda/antipath/entity"
@@ -13,6 +14,20 @@ type Tile struct {
 	totemHealth    int
 	alignmentDelta int
 	height         int
+}
+
+func (tile *Tile) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Alignment   int           `json:"alignment"`
+		Entity      entity.Entity `json:"entity"`
+		Height      int           `json:"height"`
+		TotemHealth int           `json:"totemHealth"`
+	}{
+		Alignment:   tile.alignment,
+		Entity:      tile.entity,
+		Height:      tile.height,
+		TotemHealth: tile.totemHealth,
+	})
 }
 
 func (tile *Tile) SetEntity(entity entity.Entity) error {

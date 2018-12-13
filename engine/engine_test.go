@@ -6,16 +6,15 @@ import (
 
 	"github.com/VivaLaPanda/antipath/engine/action"
 	"github.com/VivaLaPanda/antipath/state"
-	"github.com/VivaLaPanda/antipath/state/tile"
 )
 
 func TestNewEngine(t *testing.T) {
-	_ = NewEngine(100)
+	_ = NewEngine(100, 20)
 	return
 }
 
 func TestAddPlayer(t *testing.T) {
-	engine := NewEngine(100)
+	engine := NewEngine(100, 20)
 	id := engine.AddPlayer()
 
 	if engine.players[id].Health != 100 {
@@ -31,7 +30,7 @@ func TestAddPlayer(t *testing.T) {
 }
 
 func TestSetAction(t *testing.T) {
-	engine := NewEngine(100)
+	engine := NewEngine(100, 20)
 	id := engine.AddPlayer()
 
 	action := action.DefaultSet()
@@ -48,12 +47,12 @@ func TestSetAction(t *testing.T) {
 }
 
 func TestClientSubs(t *testing.T) {
-	engine := NewEngine(50)
+	engine := NewEngine(50, 10)
 	id := engine.AddPlayer()
 	for idx := 0; idx < 20; idx++ {
 		engine.AddPlayer()
 	}
-	stateReciever := make(chan [][]tile.Tile)
+	stateReciever := make(chan *state.State)
 
 	// Add the subscription
 	engine.RegisterClient(id, stateReciever)

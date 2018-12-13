@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/VivaLaPanda/antipath/client"
 	"github.com/VivaLaPanda/antipath/engine"
@@ -15,9 +16,17 @@ func main() {
 	flag.Parse()
 
 	// http.HandleFunc("/", serveHome)
-	engine := engine.NewEngine(100)
+	engine := engine.NewEngine(100, 20)
+	for idx := 0; idx < 30; idx++ {
+		engine.AddPlayer()
+	}
 	http.HandleFunc("/server", func(w http.ResponseWriter, r *http.Request) {
 		client.ServeWs(engine, w, r)
+	})
+	http.HandleFunc("/windowsize", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Write([]byte(strconv.Itoa(engine.WindowSize)))
+		return
 	})
 	err := http.ListenAndServe(*apiPort, nil)
 	if err != nil {
