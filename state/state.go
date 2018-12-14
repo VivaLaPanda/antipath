@@ -113,6 +113,7 @@ func (s *State) PeekState(entityID EntityID, windowSize int) *State {
 	s.entitiesLock.RLock()
 	pos := s.entities[entityID]
 	s.entitiesLock.RUnlock()
+
 	minX := forceBounds(pos.X-(windowSize/2), s.size)
 	minY := forceBounds(pos.Y-(windowSize/2), s.size)
 	maxX := forceBounds(pos.X+(windowSize/2), s.size)
@@ -126,6 +127,9 @@ func (s *State) PeekState(entityID EntityID, windowSize int) *State {
 	}
 
 	stateFragment.grid = gridCopy
+
+	// Make sure the current player is in the entity list
+	stateFragment.entities[entityID] = pos
 
 	return stateFragment
 }
