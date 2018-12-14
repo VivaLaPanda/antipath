@@ -139,7 +139,7 @@ func (s *State) PeekState(entityID EntityID, windowSize int) *State {
 	return stateFragment
 }
 
-func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) (err error) {
+func (s *State) ChangePos(entityID EntityID, targetPos Coordinates, altitude int) (err error) {
 	// Get the location of the entity
 	s.entitiesLock.RLock()
 	sourcePos, exists := s.entities[entityID]
@@ -153,9 +153,31 @@ func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) 
 		return fmt.Errorf("couldn't get tile at provided pos, pos: %v, err: %s", sourcePos, err)
 	}
 
+	// Simulate entity movement with collision rules
+	resultPos := s.moveCollider(sourcePos, targetPos, altitude)
+	targetTile, _ := s.GetTile(resultPos)
+
+	// Move the entity
+	s.entitiesLock.Lock()
+	entityData := sourceTile.PopEntity()
+	targetTile.SetEntity(entityData)
+	s.entities[entityID] = resultPos
+	s.entitiesLock.Unlock()
+
+	return nil
+}
+
+func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) (err error) {
+	// Get the location of the entity
+	s.entitiesLock.RLock()
+	sourcePos, exists := s.entities[entityID]
+	s.entitiesLock.RUnlock()
+	if !exists {
+		return fmt.Errorf("provided entity ID not valid. ID: %s", entityID)
+	}
+
 	// Calculate the total movement
 	targetPos := sourcePos
-	var targetTile *tile.Tile
 	switch dir {
 	case MovUp:
 		targetPos.Y -= speed
@@ -167,16 +189,7 @@ func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) 
 		targetPos.X += speed
 	}
 
-	// Simulate entity movement with collision rules
-	resultPos := s.moveCollider(sourcePos, targetPos, altitude)
-	targetTile, _ = s.GetTile(resultPos)
-
-	// Move the entity
-	s.entitiesLock.Lock()
-	entityData := sourceTile.PopEntity()
-	targetTile.SetEntity(entityData)
-	s.entities[entityID] = resultPos
-	s.entitiesLock.Unlock()
+	return s.ChangePos(entityID, targetPos, altitude)
 
 	return nil
 }

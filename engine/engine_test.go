@@ -2,7 +2,6 @@ package engine
 
 import (
 	"testing"
-	"time"
 
 	"github.com/VivaLaPanda/antipath/engine/action"
 	"github.com/VivaLaPanda/antipath/state"
@@ -33,14 +32,15 @@ func TestSetAction(t *testing.T) {
 	engine := NewEngine(100, 20)
 	id := engine.AddPlayer()
 
-	action := action.DefaultSet()
-	engine.SetAction(id, action)
+	pos, _ := engine.gameState.GetEntityPos(id)
 
-	action.Movement = state.MovUp
+	testAction := action.Set{pos, false}
+	engine.SetAction(id, testAction)
 
 	for idx := 0; idx < 50; idx++ {
-		engine.gameState.GetEntityPos(id)
-		engine.SetAction(id, action)
+		pos.Y -= 1
+		testAction = action.Set{pos, false}
+		engine.SetAction(id, testAction)
 	}
 
 	return
@@ -67,13 +67,15 @@ func TestClientSubs(t *testing.T) {
 		}
 	}()
 
-	// Just move up a bunch
-	action := action.DefaultSet()
-	action.Movement = state.MovUp
+	pos, _ := engine.gameState.GetEntityPos(id)
 
-	for idx := 0; idx < 25; idx++ {
-		engine.SetAction(id, action)
-		time.Sleep(10 * time.Millisecond)
+	testAction := action.Set{Movement: pos, Jump: false}
+	engine.SetAction(id, testAction)
+
+	for idx := 0; idx < 50; idx++ {
+		pos.Y -= 1
+		testAction = action.Set{Movement: pos, Jump: false}
+		engine.SetAction(id, testAction)
 	}
 
 	engine.UnregisterClient(id)

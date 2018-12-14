@@ -55,7 +55,7 @@ func (e *Engine) AddPlayer() (entityID state.EntityID) {
 
 	e.players[entityID] = newPlayer
 	// Set the default action
-	e.playerActions[entityID] = action.DefaultSet()
+	e.playerActions[entityID] = action.Set{pos, false}
 
 	return entityID
 }
@@ -86,7 +86,7 @@ func (e *Engine) processEvents() {
 		e.processPlayerActions()
 		e.updateClients()
 
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(1000 * time.Millisecond)
 	}
 }
 
@@ -109,7 +109,8 @@ func (e *Engine) processPlayerActions() {
 		}
 
 		// Process movement
-		err := e.gameState.Move(entityID, action.Movement, playerData.Speed(), playerData.Altitude)
+		// TODO: Enforce player speed
+		err := e.gameState.ChangePos(entityID, action.Movement, playerData.Altitude)
 
 		// MovRight now any error is a panic. Once we get to this part of the code actions
 		if err != nil {
