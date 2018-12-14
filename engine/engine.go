@@ -86,8 +86,12 @@ func (e *Engine) processEvents() {
 		e.processPlayerActions()
 		e.updateClients()
 
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond)
 	}
+}
+
+func (e *Engine) GetPlayer(entityID state.EntityID) *player.Player {
+	return e.players[entityID]
 }
 
 func (e *Engine) processPlayerActions() {

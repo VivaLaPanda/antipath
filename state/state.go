@@ -12,6 +12,7 @@ import (
 
 type State struct {
 	grid         [][]tile.Tile
+	root         Coordinates
 	size         int
 	entities     map[EntityID]Coordinates
 	entitiesLock *sync.RWMutex
@@ -47,6 +48,7 @@ func NewState(size int) (grid *State) {
 	}
 	return &State{
 		grid:         gridData,
+		root:         Coordinates{0, 0},
 		size:         size, // faster than using len every time
 		entities:     make(map[EntityID]Coordinates),
 		entitiesLock: &sync.RWMutex{},
@@ -62,9 +64,11 @@ func (state *State) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Grid     [][]tile.Tile            `json:"grid"`
 		Entities map[EntityID]Coordinates `json:"entities"`
+		Root     Coordinates              `json:"root"`
 	}{
 		Grid:     state.grid,
 		Entities: state.entities,
+		Root:     state.root,
 	})
 }
 
@@ -127,6 +131,7 @@ func (s *State) PeekState(entityID EntityID, windowSize int) *State {
 	}
 
 	stateFragment.grid = gridCopy
+	stateFragment.root = Coordinates{minX, minY}
 
 	// Make sure the current player is in the entity list
 	stateFragment.entities[entityID] = pos

@@ -8,6 +8,7 @@ import (
 
 	"github.com/VivaLaPanda/antipath/engine"
 	"github.com/VivaLaPanda/antipath/engine/action"
+	"github.com/VivaLaPanda/antipath/entity/player"
 	"github.com/VivaLaPanda/antipath/state"
 	"github.com/gorilla/websocket"
 )
@@ -101,7 +102,7 @@ func (c *Client) writePump() {
 	// Loop reading current game state
 	for {
 		select {
-		case state, ok := <-c.stateReciever:
+		case stateSnapshot, ok := <-c.stateReciever:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The channel is closed.
@@ -114,7 +115,16 @@ func (c *Client) writePump() {
 				return
 			}
 
-			stateString, err := json.Marshal(state)
+			clientState := struct {
+				ClientData *player.Player
+				ClientID   state.EntityID
+				GameState  *state.State
+			}{
+				ClientData: c.engine.GetPlayer(c.playerID),
+				ClientID:   c.playerID,
+				GameState:  stateSnapshot,
+			}
+			stateString, err := json.Marshal(clientState)
 			if err != nil {
 				return
 			}
