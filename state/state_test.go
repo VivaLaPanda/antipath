@@ -16,6 +16,15 @@ func TestNewState(t *testing.T) {
 	NewState(100)
 }
 
+func TestMarshallJson(t *testing.T) {
+	testState := NewState(100)
+
+	_, err := testState.MarshalJSON()
+	if err != nil {
+		t.Errorf("Failed to marshal player struct into JSON, err: %v", err)
+	}
+}
+
 func TestGetTile(t *testing.T) {
 	testState := NewState(100)
 
@@ -61,6 +70,23 @@ func TestGetEntityPos(t *testing.T) {
 	}
 }
 
+func TestPeekState(t *testing.T) {
+	testState := NewState(100)
+	pos := Coordinates{0, 0}
+	player := player.NewPlayer()
+	playerID, _ := testState.NewEntity(player, pos)
+
+	stateFrag := testState.PeekState(playerID, 10)
+	if len(stateFrag.grid) > 10 {
+		t.Errorf("Peekstate resulted in bigger grid than expected. A: %d, E:%d", len(stateFrag.grid), 10)
+	}
+
+	actualPos, _ := stateFrag.entities[playerID]
+	if actualPos != pos {
+		t.Errorf("Peekstate result doesn't have correct entity pos. A:%v E:%v", actualPos, pos)
+	}
+}
+
 func TestMove(t *testing.T) {
 	testState := NewState(100)
 	pos := Coordinates{50, 50}
@@ -74,7 +100,7 @@ func TestMove(t *testing.T) {
 	}
 	newPos, _ := testState.GetEntityPos(playerID)
 	expectedPos := pos
-	expectedPos.Y -= 1
+	expectedPos.Y -= testPlayer.Speed()
 	if newPos != expectedPos {
 		t.Errorf("Move didn't result in the expected location. A: %v, E: %v", newPos, expectedPos)
 	}

@@ -12,24 +12,28 @@ import (
 )
 
 type Engine struct {
-	players          map[state.EntityID]*player.Player
-	ClientSubs       map[state.EntityID]chan *state.State
-	clientSubsLock   *sync.RWMutex
-	playerActions    map[state.EntityID]action.Set
-	actionsToProcess map[state.EntityID]action.Set
-	gameState        *state.State
-	WindowSize       int
+	ClientSubs        map[state.EntityID]chan *state.State
+	clientSubsLock    *sync.RWMutex
+	players           map[state.EntityID]*player.Player
+	playersLock       *sync.RWMutex
+	playerActions     map[state.EntityID]action.Set
+	playerActionsLock *sync.RWMutex
+	actionsToProcess  map[state.EntityID]action.Set
+	gameState         *state.State
+	WindowSize        int
 }
 
 func NewEngine(stateSize int, WindowSize int) *Engine {
 	engine := &Engine{
-		players:          make(map[state.EntityID]*player.Player),
-		ClientSubs:       make(map[state.EntityID]chan *state.State),
-		clientSubsLock:   &sync.RWMutex{},
-		playerActions:    make(map[state.EntityID]action.Set),
-		actionsToProcess: make(map[state.EntityID]action.Set),
-		gameState:        state.NewState(stateSize),
-		WindowSize:       WindowSize,
+		ClientSubs:        make(map[state.EntityID]chan *state.State),
+		clientSubsLock:    &sync.RWMutex{},
+		players:           make(map[state.EntityID]*player.Player),
+		playersLock:       &sync.RWMutex{},
+		playerActions:     make(map[state.EntityID]action.Set),
+		playerActionsLock: &sync.RWMutex{},
+		actionsToProcess:  make(map[state.EntityID]action.Set),
+		gameState:         state.NewState(stateSize),
+		WindowSize:        WindowSize,
 	}
 
 	go engine.processEvents()
@@ -54,9 +58,13 @@ func (e *Engine) AddPlayer() (entityID state.EntityID) {
 		entityID, err = e.gameState.NewEntity(newPlayer, pos)
 	}
 
+	e.playersLock.Lock()
 	e.players[entityID] = newPlayer
+	e.playersLock.Unlock()
 	// Set the default action
+	e.playerActionsLock.Lock()
 	e.playerActions[entityID] = action.Set{Movement: pos, Jump: false}
+	e.playerActionsLock.Unlock()
 
 	return entityID
 }
@@ -78,7 +86,9 @@ func (e *Engine) UnregisterClient(entityID state.EntityID) {
 }
 
 func (e *Engine) SetAction(entityID state.EntityID, actionSet action.Set) {
+	e.playerActionsLock.Lock()
 	e.playerActions[entityID] = actionSet
+	e.playerActionsLock.Unlock()
 }
 
 func (e *Engine) processEvents() {
@@ -99,11 +109,15 @@ func (e *Engine) processPlayerActions() {
 	// Freeze actions at this time
 	e.actionsToProcess = e.playerActions
 	// Wipe old actions so they don't get reused
+	e.playerActionsLock.Lock()
 	e.playerActions = make(map[state.EntityID]action.Set)
+	e.playerActionsLock.Unlock()
 
 	for entityID, action := range e.actionsToProcess {
 		var err error
+		e.playersLock.RLock()
 		playerData := e.players[entityID]
+		e.playersLock.RUnlock()
 
 		// Process jumps
 		if action.Jump {

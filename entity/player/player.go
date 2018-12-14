@@ -13,11 +13,12 @@ type Player struct {
 
 func NewPlayer() *Player {
 	return &Player{
-		Health:    100,
-		alignment: 0,
-		baseSpeed: 5,
-		height:    5,
-		Altitude:  1,
+		Health:     100,
+		alignment:  0,
+		baseSpeed:  5,
+		height:     5,
+		jumpHeight: 1,
+		Altitude:   1,
 	}
 }
 
