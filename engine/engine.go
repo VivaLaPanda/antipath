@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -55,7 +56,7 @@ func (e *Engine) AddPlayer() (entityID state.EntityID) {
 
 	e.players[entityID] = newPlayer
 	// Set the default action
-	e.playerActions[entityID] = action.Set{pos, false}
+	e.playerActions[entityID] = action.Set{Movement: pos, Jump: false}
 
 	return entityID
 }
@@ -101,6 +102,7 @@ func (e *Engine) processPlayerActions() {
 	e.playerActions = make(map[state.EntityID]action.Set)
 
 	for entityID, action := range e.actionsToProcess {
+		var err error
 		playerData := e.players[entityID]
 
 		// Process jumps
@@ -110,7 +112,12 @@ func (e *Engine) processPlayerActions() {
 
 		// Process movement
 		// TODO: Enforce player speed
-		err := e.gameState.ChangePos(entityID, action.Movement, playerData.Altitude)
+		pos, _ := e.gameState.GetEntityPos(entityID)
+		if state.Distance(pos, action.Movement) <= playerData.Speed()*4 {
+			err = e.gameState.ChangePos(entityID, action.Movement, playerData.Altitude)
+		} else {
+			log.Printf("Client %s is moving too fast!", entityID)
+		}
 
 		// MovRight now any error is a panic. Once we get to this part of the code actions
 		if err != nil {

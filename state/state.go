@@ -190,8 +190,19 @@ func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) 
 	}
 
 	return s.ChangePos(entityID, targetPos, altitude)
+}
 
-	return nil
+func abs(a int) int {
+	if a < 0 {
+		return a * -1
+	}
+
+	return a
+}
+
+func Distance(a Coordinates, b Coordinates) int {
+	distance := abs(a.X-b.X) + abs(a.Y-b.Y)
+	return distance
 }
 
 func (s *State) moveCollider(sourcePos Coordinates, targetPos Coordinates, altitude int) (result Coordinates) {

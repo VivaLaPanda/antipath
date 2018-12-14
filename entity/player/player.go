@@ -15,7 +15,7 @@ func NewPlayer() *Player {
 	return &Player{
 		Health:    100,
 		alignment: 0,
-		baseSpeed: 1,
+		baseSpeed: 5,
 		height:    5,
 		Altitude:  1,
 	}

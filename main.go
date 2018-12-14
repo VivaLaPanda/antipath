@@ -16,7 +16,7 @@ func main() {
 	flag.Parse()
 
 	// http.HandleFunc("/", serveHome)
-	engine := engine.NewEngine(100, 20)
+	engine := engine.NewEngine(100, 40)
 	for idx := 0; idx < 30; idx++ {
 		engine.AddPlayer()
 	}
