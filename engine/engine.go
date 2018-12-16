@@ -7,31 +7,32 @@ import (
 	"time"
 
 	"github.com/VivaLaPanda/antipath/engine/action"
+	"github.com/VivaLaPanda/antipath/entity"
 	"github.com/VivaLaPanda/antipath/entity/player"
 	"github.com/VivaLaPanda/antipath/state"
 )
 
 type Engine struct {
-	ClientSubs        map[state.EntityID]chan *state.State
+	ClientSubs        map[entity.ID]chan *state.State
 	clientSubsLock    *sync.RWMutex
-	players           map[state.EntityID]*player.Player
+	players           map[entity.ID]*player.Player
 	playersLock       *sync.RWMutex
-	playerActions     map[state.EntityID]action.Set
+	playerActions     map[entity.ID]action.Set
 	playerActionsLock *sync.RWMutex
-	actionsToProcess  map[state.EntityID]action.Set
+	actionsToProcess  map[entity.ID]action.Set
 	gameState         *state.State
 	WindowSize        int
 }
 
 func NewEngine(stateSize int, WindowSize int) *Engine {
 	engine := &Engine{
-		ClientSubs:        make(map[state.EntityID]chan *state.State),
+		ClientSubs:        make(map[entity.ID]chan *state.State),
 		clientSubsLock:    &sync.RWMutex{},
-		players:           make(map[state.EntityID]*player.Player),
+		players:           make(map[entity.ID]*player.Player),
 		playersLock:       &sync.RWMutex{},
-		playerActions:     make(map[state.EntityID]action.Set),
+		playerActions:     make(map[entity.ID]action.Set),
 		playerActionsLock: &sync.RWMutex{},
-		actionsToProcess:  make(map[state.EntityID]action.Set),
+		actionsToProcess:  make(map[entity.ID]action.Set),
 		gameState:         state.NewState(stateSize),
 		WindowSize:        WindowSize,
 	}
@@ -41,7 +42,7 @@ func NewEngine(stateSize int, WindowSize int) *Engine {
 	return engine
 }
 
-func (e *Engine) AddPlayer() (entityID state.EntityID) {
+func (e *Engine) AddPlayer() (entityID entity.ID) {
 	newPlayer := player.NewPlayer()
 
 	// Keep trying to spawn in the player at new coords until it works
@@ -59,6 +60,7 @@ func (e *Engine) AddPlayer() (entityID state.EntityID) {
 	}
 
 	e.playersLock.Lock()
+	newPlayer.PlayerID = entityID
 	e.players[entityID] = newPlayer
 	e.playersLock.Unlock()
 	// Set the default action
@@ -69,14 +71,14 @@ func (e *Engine) AddPlayer() (entityID state.EntityID) {
 	return entityID
 }
 
-func (e *Engine) RegisterClient(entityID state.EntityID, stateReciever chan *state.State) {
+func (e *Engine) RegisterClient(entityID entity.ID, stateReciever chan *state.State) {
 	e.clientSubsLock.Lock()
 	defer e.clientSubsLock.Unlock()
 
 	e.ClientSubs[entityID] = stateReciever
 }
 
-func (e *Engine) UnregisterClient(entityID state.EntityID) {
+func (e *Engine) UnregisterClient(entityID entity.ID) {
 	e.clientSubsLock.Lock()
 	defer e.clientSubsLock.Unlock()
 
@@ -85,7 +87,7 @@ func (e *Engine) UnregisterClient(entityID state.EntityID) {
 	close(channel)
 }
 
-func (e *Engine) SetAction(entityID state.EntityID, actionSet action.Set) {
+func (e *Engine) SetAction(entityID entity.ID, actionSet action.Set) {
 	e.playerActionsLock.Lock()
 	e.playerActions[entityID] = actionSet
 	e.playerActionsLock.Unlock()
@@ -101,7 +103,7 @@ func (e *Engine) processEvents() {
 	}
 }
 
-func (e *Engine) GetPlayer(entityID state.EntityID) *player.Player {
+func (e *Engine) GetPlayer(entityID entity.ID) *player.Player {
 	return e.players[entityID]
 }
 
@@ -110,7 +112,7 @@ func (e *Engine) processPlayerActions() {
 	e.actionsToProcess = e.playerActions
 	// Wipe old actions so they don't get reused
 	e.playerActionsLock.Lock()
-	e.playerActions = make(map[state.EntityID]action.Set)
+	e.playerActions = make(map[entity.ID]action.Set)
 	e.playerActionsLock.Unlock()
 
 	for entityID, action := range e.actionsToProcess {

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"testing"
+	"time"
 
 	"github.com/VivaLaPanda/antipath/engine/action"
 	"github.com/VivaLaPanda/antipath/state"
@@ -41,6 +42,7 @@ func TestSetAction(t *testing.T) {
 		pos.Y -= 1
 		testAction = action.Set{pos, false}
 		engine.SetAction(id, testAction)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	return
@@ -76,6 +78,7 @@ func TestClientSubs(t *testing.T) {
 		pos.Y -= 1
 		testAction = action.Set{Movement: pos, Jump: false}
 		engine.SetAction(id, testAction)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	engine.UnregisterClient(id)

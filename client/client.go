@@ -8,6 +8,7 @@ import (
 
 	"github.com/VivaLaPanda/antipath/engine"
 	"github.com/VivaLaPanda/antipath/engine/action"
+	"github.com/VivaLaPanda/antipath/entity"
 	"github.com/VivaLaPanda/antipath/entity/player"
 	"github.com/VivaLaPanda/antipath/state"
 	"github.com/gorilla/websocket"
@@ -42,7 +43,7 @@ type Client struct {
 	// The websocket connection.
 	conn     *websocket.Conn
 	engine   *engine.Engine
-	playerID state.EntityID
+	playerID entity.ID
 
 	// Buffered channel of outbound messages.
 	stateReciever chan *state.State
@@ -117,7 +118,7 @@ func (c *Client) writePump() {
 
 			clientState := struct {
 				ClientData *player.Player
-				ClientID   state.EntityID
+				ClientID   entity.ID
 				GameState  *state.State
 			}{
 				ClientData: c.engine.GetPlayer(c.playerID),

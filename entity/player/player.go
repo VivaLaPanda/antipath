@@ -1,8 +1,13 @@
 package player
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/VivaLaPanda/antipath/entity"
+)
 
 type Player struct {
+	PlayerID   entity.ID
 	Health     uint
 	alignment  int
 	baseSpeed  int
@@ -24,20 +29,26 @@ func NewPlayer() *Player {
 
 func (p *Player) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
-		Health     uint `json:"health"`
-		Alignment  int  `json:"alignment"`
-		Speed      int  `json:"speed"`
-		Height     int  `json:"height"`
-		JumpHeight int  `json:"jumpHeight"`
-		Altitude   int  `json:"altitude"`
+		Health     uint      `json:"health"`
+		PlayerID   entity.ID `json:"playerID"`
+		Alignment  int       `json:"alignment"`
+		Speed      int       `json:"speed"`
+		Height     int       `json:"height"`
+		JumpHeight int       `json:"jumpHeight"`
+		Altitude   int       `json:"altitude"`
 	}{
 		Health:     p.Health,
+		PlayerID:   p.PlayerID,
 		Alignment:  p.alignment,
 		Speed:      p.Speed(),
 		Height:     p.Height(),
 		JumpHeight: p.jumpHeight,
 		Altitude:   p.Altitude,
 	})
+}
+
+func (p *Player) ID() entity.ID {
+	return p.PlayerID
 }
 
 func (p *Player) Jump() {

@@ -14,12 +14,9 @@ type State struct {
 	grid         [][]tile.Tile
 	root         Coordinates
 	size         int
-	entities     map[EntityID]Coordinates
+	entities     map[entity.ID]Coordinates
 	entitiesLock *sync.RWMutex
 }
-
-// A uuid that will always refer to an entity in the state
-type EntityID string
 
 // 2D coordinate pair. References a cell in `grid`
 type Coordinates struct {
@@ -50,7 +47,7 @@ func NewState(size int) (grid *State) {
 		grid:         gridData,
 		root:         Coordinates{0, 0},
 		size:         size, // faster than using len every time
-		entities:     make(map[EntityID]Coordinates),
+		entities:     make(map[entity.ID]Coordinates),
 		entitiesLock: &sync.RWMutex{},
 	}
 }
@@ -62,9 +59,9 @@ func (state *State) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&struct {
-		Grid     [][]tile.Tile            `json:"grid"`
-		Entities map[EntityID]Coordinates `json:"entities"`
-		Root     Coordinates              `json:"root"`
+		Grid     [][]tile.Tile             `json:"grid"`
+		Entities map[entity.ID]Coordinates `json:"entities"`
+		Root     Coordinates               `json:"root"`
 	}{
 		Grid:     state.grid,
 		Entities: state.entities,
@@ -83,7 +80,7 @@ func (s *State) GetTile(pos Coordinates) (*tile.Tile, error) {
 	return &s.grid[pos.Y][pos.X], nil
 }
 
-func (s *State) NewEntity(data entity.Entity, pos Coordinates) (id EntityID, err error) {
+func (s *State) NewEntity(data entity.Entity, pos Coordinates) (id entity.ID, err error) {
 	targetTile, err := s.GetTile(pos)
 	if err != nil {
 		return "", err
@@ -93,7 +90,7 @@ func (s *State) NewEntity(data entity.Entity, pos Coordinates) (id EntityID, err
 		return "", fmt.Errorf("provided pos can't contain an entity, already full. Tile %v", targetTile)
 	}
 
-	id = EntityID(uuid.Must(uuid.NewV4()).String())
+	id = entity.ID(uuid.Must(uuid.NewV4()).String())
 
 	s.entitiesLock.Lock()
 	s.entities[id] = pos
@@ -102,16 +99,16 @@ func (s *State) NewEntity(data entity.Entity, pos Coordinates) (id EntityID, err
 	return id, nil
 }
 
-func (s *State) GetEntityPos(entityID EntityID) (pos Coordinates, exists bool) {
+func (s *State) GetEntityPos(entityID entity.ID) (pos Coordinates, exists bool) {
 	s.entitiesLock.RLock()
 	pos, exists = s.entities[entityID]
 	s.entitiesLock.RUnlock()
 	return
 }
 
-func (s *State) PeekState(entityID EntityID, windowSize int) *State {
+func (s *State) PeekState(entityID entity.ID, windowSize int) *State {
 	stateFragment := &State{}
-	stateFragment.entities = make(map[EntityID]Coordinates)
+	stateFragment.entities = make(map[entity.ID]Coordinates)
 
 	// Expand a window around the entity
 	s.entitiesLock.RLock()
@@ -122,16 +119,22 @@ func (s *State) PeekState(entityID EntityID, windowSize int) *State {
 	minY := forceBounds(pos.Y-(windowSize/2), s.size)
 	maxX := forceBounds(pos.X+(windowSize/2), s.size)
 	maxY := forceBounds(pos.Y+(windowSize/2), s.size)
+	stateFragment.root = Coordinates{minX, minY}
 
 	// Grab the part of the grid described by the bounds above
 	ySlice := s.grid[minY:maxY]
 	gridCopy := make([][]tile.Tile, len(ySlice))
-	for idx, row := range ySlice {
-		gridCopy[idx] = row[minX:maxX]
+	for idy, row := range ySlice {
+		gridCopy[idy] = row[minX:maxX]
+		for idx, tile := range gridCopy[idy] {
+			entity := tile.PeekEntity()
+			if entity != nil {
+				stateFragment.entities[entity.ID()] = Coordinates{minX + idx, minY + idy}
+			}
+		}
 	}
 
 	stateFragment.grid = gridCopy
-	stateFragment.root = Coordinates{minX, minY}
 
 	// Make sure the current player is in the entity list
 	stateFragment.entities[entityID] = pos
@@ -139,7 +142,7 @@ func (s *State) PeekState(entityID EntityID, windowSize int) *State {
 	return stateFragment
 }
 
-func (s *State) ChangePos(entityID EntityID, targetPos Coordinates, altitude int) (err error) {
+func (s *State) ChangePos(entityID entity.ID, targetPos Coordinates, altitude int) (err error) {
 	// Get the location of the entity
 	s.entitiesLock.RLock()
 	sourcePos, exists := s.entities[entityID]
@@ -167,7 +170,7 @@ func (s *State) ChangePos(entityID EntityID, targetPos Coordinates, altitude int
 	return nil
 }
 
-func (s *State) Move(entityID EntityID, dir Direction, speed int, altitude int) (err error) {
+func (s *State) Move(entityID entity.ID, dir Direction, speed int, altitude int) (err error) {
 	// Get the location of the entity
 	s.entitiesLock.RLock()
 	sourcePos, exists := s.entities[entityID]
