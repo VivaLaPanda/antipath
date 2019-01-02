@@ -26,12 +26,12 @@ type Coordinates struct {
 // How we specify directions on the grid
 type Direction int
 
-// This const is like an enum. So MovUp is 0, MovRight is 1, etc.
+// This const is like an enum. So Up is 0, Right is 1, etc.
 const (
-	MovUp    Direction = iota
-	MovRight Direction = iota
-	MovLeft  Direction = iota
-	MovDown  Direction = iota
+	Up    Direction = iota
+	Right Direction = iota
+	Left  Direction = iota
+	Down  Direction = iota
 	MovNone  Direction = iota
 )
 
@@ -182,13 +182,13 @@ func (s *State) Move(entityID entity.ID, dir Direction, speed int, altitude int)
 	// Calculate the total movement
 	targetPos := sourcePos
 	switch dir {
-	case MovUp:
+	case Up:
 		targetPos.Y -= speed
-	case MovDown:
+	case Down:
 		targetPos.Y += speed
-	case MovLeft:
+	case Left:
 		targetPos.X -= speed
-	case MovRight:
+	case Right:
 		targetPos.X += speed
 	}
 

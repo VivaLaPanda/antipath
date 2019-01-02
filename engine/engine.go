@@ -135,7 +135,7 @@ func (e *Engine) processPlayerActions() {
 			log.Printf("Client %s is moving too fast!", entityID)
 		}
 
-		// MovRight now any error is a panic. Once we get to this part of the code actions
+		// Right now any error is a panic. Once we get to this part of the code actions
 		if err != nil {
 			panic(err)
 		}
